@@ -93,19 +93,3 @@ class GrokAPIClient:
             except Exception as e:
                 logger.error(f"CLI error: {e}")
                 print(f"An error occurred: {e}. Please try again.\n")
-
-def main():
-    load_dotenv()
-
-    api_key = os.getenv("API_KEY")
-    
-    if not api_key:
-        logger.error("XAI_API_KEY environment variable not set")
-        raise ValueError("Please set the XAI_API_KEY environment variable")
-
-    # Initialize the Grok API client
-    grok_client = GrokAPIClient(api_key=api_key)
-    grok_client.chat()
-
-if __name__ == "__main__":
-    main()
