@@ -57,6 +57,34 @@ class GrokAPIClient:
             logger.error(f"Error sending request to Grok API: {e}")
             return None
 
+    def chat(self):
+        print("Grok API CLI: Enter your query (or type 'exit' to quit)")
+        while True:
+            try:
+                query = input("Query: ").strip()
+                if query.lower() == 'exit':
+                    logger.info("Exiting CLI")
+                    print("Goodbye!")
+                    break
+                if not query:
+                    print("Please enter a non-empty query.")
+                    continue
+
+                response = self.send_request(query)
+                if response:
+                    print("\nGrok API Response:")
+                    print(f"Grok API Response: {response}")
+                else:
+                    print("Failed to get a response from the Grok API. Check logs for details.\n")
+
+            except KeyboardInterrupt:
+                logger.info("CLI interrupted by user")
+                print("\nGoodbye!")
+                break
+            except Exception as e:
+                logger.error(f"CLI error: {e}")
+                print(f"An error occurred: {e}. Please try again.\n")
+
 def main():
     load_dotenv()
 
@@ -68,16 +96,7 @@ def main():
 
     # Initialize the Grok API client
     grok_client = GrokAPIClient(api_key=api_key)
-    
-    # Test query to verify connection
-    test_query = "Hello, Grok! Can you confirm the API connection?"
-    response = grok_client.send_request(test_query)
-    
-    if response:
-        logger.info(f"Grok API Response: {response}")
-    else:
-        logger.error("Failed to get a response from the Grok API")
-        print("Failed to get a response from the Grok API")
+    grok_client.chat()
 
 if __name__ == "__main__":
     main()
