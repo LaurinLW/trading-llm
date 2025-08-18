@@ -1,0 +1,3 @@
+xai_sdk
+dotenv
+typing

@@ -1,7 +1,5 @@
 import os
 from dotenv import load_dotenv
-import requests
-import json
 from typing import Optional, Dict, Any
 import logging
 from xai_sdk import Client
