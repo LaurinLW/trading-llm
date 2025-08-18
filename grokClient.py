@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import logging
 from xai_sdk import Client
-from xai_sdk.chat import user, system
+from xai_sdk.chat import user, assistant
 
 # Set up logging for debugging and error tracking
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,6 +21,7 @@ class GrokAPIClient:
         try:
             self.client = Client(api_key=api_key)
             self.model = model
+            self.conversation_history: List[Dict[str, str]] = []
             logger.info(f"Grok API client initialized with model: {model}")
         except Exception as e:
             logger.error(f"Failed to initialize Grok API client: {e}")
@@ -38,8 +39,15 @@ class GrokAPIClient:
         """
         try:
             logger.info(f"Sending query to Grok API: {query}")
+            self.conversation_history.append({"role": "user", "content": query})
             chat = self.client.chat.create(model=self.model)
-            chat.append(user(query))
+
+            for message in self.conversation_history:
+                if message["role"] == "user":
+                    chat.append(user(message["content"]))
+                elif message["role"] == "assistant":
+                    chat.append(assistant(message["content"]))
+
             response = chat.sample()
             
             if response and hasattr(response, 'content'):
@@ -47,6 +55,7 @@ class GrokAPIClient:
                     "role": "assistant",
                     "content": response.content
                 }
+                self.conversation_history.append(response_content)
                 logger.info("Received response from Grok API")
                 return response_content
             else:
