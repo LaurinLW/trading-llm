@@ -2,3 +2,6 @@ xai_sdk
 dotenv
 typing
 requests
+flask
+flask_cors
+alpaca-py

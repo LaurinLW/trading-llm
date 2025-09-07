@@ -1,0 +1,8 @@
+body {
+  background-color: black;
+}
+
+.container {
+  max-width: 50vw;
+  max-height: 50vh;
+}

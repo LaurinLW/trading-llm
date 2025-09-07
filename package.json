@@ -1,0 +1,23 @@
+{
+  "dependencies": {
+    "chart.js": "^4.5.0",
+    "chartjs-plugin-annotation": "^3.1.0",
+    "zod": "^4.1.5"
+  },
+  "name": "website",
+  "version": "1.0.0",
+  "main": "./website/scripts/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "vite": "^7.1.4"
+  }
+}
