@@ -15,6 +15,9 @@ const StockDataSchema = z.array(
     volume: z.number(),
     buySignal: z.boolean(),
     sellSignal: z.boolean(),
+    fiveMinMovingAverage: z.number(),
+    tenMinMovingAverage: z.number(),
+    sixMinRSI: z.number()
   })
 );
 
@@ -25,31 +28,58 @@ const mockStockData = {
   sellSignals: [false, false, true, false, false, false],
 };
 
-async function fetchData() {
-  const response = await fetch('http://localhost:8080/stockData');
+function waitForWebSocketClose(websocket) {
+  return new Promise((resolve) => {
+    websocket.onclose = (event) => {
+      console.log("WebSocket closed:", event.code, event.reason);
+      resolve(event);
+    };
+    websocket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      resolve(error); // also resolve on error, if you want to stop waiting
+    };
+  });
+}
 
-  if (!response.ok) {
-    return mockStockData;
-  }
+export async function awaitData() {
+  const websocket = new WebSocket("ws://localhost:8765");
 
-  const data = await response.json();
+  websocket.onmessage = async (event) => {
+    const data = event.data
+    console.log(data);
+    const parsedData = JSON.parse(data);
+    console.log(parsedData);
+    const chartData = convertData(parsedData);
+    await drawChart(chartData);
+  };
+
+  await waitForWebSocketClose(websocket);
+}
+
+function convertData(data) {
   const parsedData = StockDataSchema.parse(data);
   console.log(data);
-  const returnData = { labels: [], prices: [], buySignals: [], sellSignals: [] };
+  const returnData = { labels: [], prices: [], buySignals: [], sellSignals: [], fiveMinMovingAverage: [], tenMinMovingAverage: [], sixMinRSI: [] };
 
   parsedData.forEach((item) => {
     returnData.labels.push(item.timestamp);
     returnData.prices.push(item.close);
     returnData.sellSignals.push(item.sellSignal);
     returnData.buySignals.push(item.buySignal);
+    returnData.fiveMinMovingAverage.push(item.fiveMinMovingAverage);
+    returnData.tenMinMovingAverage.push(item.tenMinMovingAverage);
+    returnData.sixMinRSI.push(item.sixMinRSI);
   });
 
   return returnData;
 }
 
-export async function initChart() {
-  const data = await fetchData();
+let myChart;
 
+async function drawChart(data) {
+  if (myChart) {
+    myChart.destroy();  // Destroy existing if it exists
+  }
   const annotations = [];
 
   data.buySignals.forEach((flagSet, index) => {
@@ -105,7 +135,7 @@ export async function initChart() {
   });
 
   const ctx = document.getElementById('stockChart').getContext('2d');
-  new Chart(ctx, {
+  myChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: data.labels,
@@ -117,6 +147,34 @@ export async function initChart() {
           backgroundColor: 'rgba(75, 192, 192, 0.2)',
           fill: false,
           tension: 0.3,
+          yAxisID: 'y',
+        },
+        {
+          label: '5 min moving Average',
+          data: data.fiveMinMovingAverage,
+          borderColor: 'rgba(68, 255, 0, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          fill: false,
+          tension: 0.3,
+          yAxisID: 'y',
+        },
+        {
+          label: '10 min moving Average',
+          data: data.tenMinMovingAverage,
+          borderColor: 'rgba(204, 0, 255, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          fill: false,
+          tension: 0.3,
+          yAxisID: 'y',
+        },
+        {
+          label: '6 min Relative Strength Index',
+          data: data.sixMinRSI,
+          borderColor: 'rgba(255, 0, 0, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          fill: false,
+          tension: 0.3,
+          yAxisID: 'y1',
         },
       ],
     },
@@ -136,7 +194,17 @@ export async function initChart() {
           },
           suggestedMax: Math.max(...data.prices) * 1.005,
           beginAtZero: false,
+          position: 'left',
         },
+        y1: {
+          title: {
+            display: true,
+            text: 'Relative Strength Index',
+          },
+          suggestedMax: Math.max(...data.sixMinRSI) * 1.005,
+          beginAtZero: false,
+          position: 'right',
+        }
       },
       layout: {},
       plugins: {

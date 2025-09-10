@@ -5,3 +5,8 @@ requests
 flask
 flask_cors
 alpaca-py
+waitress
+websockets
+websocket-client
+pytest
+pytest-mock

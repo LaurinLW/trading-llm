@@ -45,13 +45,14 @@ class GrokAPIClient:
             logger.error(f"Error sending request to Grok API: {e}")
             return None
 
-    def getSignal(self, stockData):
+    def getSignal(self, stockData, lastBuySignal, lastSellSignal):
+        logger.info(str(stockData))
         response = self.send_request(
-            stockData, "You are a proffesional day trader. You will recieve stock information of TSLA now. You need to set flags for the trader. Analyse it and give an answer in this format: {flag: 'BUY' | 'SELL' | 'NONE'}"
+            str(stockData), f'You are a proffesional day trader. You will recieve stock information of TSLA now. You need to set flags for the trader. The last buy flag was set at {lastBuySignal if lastBuySignal else "never"}. The last sell flag was set at {lastSellSignal if lastSellSignal else "never"}. Analyse it and give an answer in this format: {{"flag": "BUY" | "SELL" | "NONE" }}'
         )
         logger.info(response)
         if response:
-            parsed_data = json.loads(response["content"])
+            parsed_data = json.loads(response['content'])
             flag = parsed_data["flag"]
             return flag
 

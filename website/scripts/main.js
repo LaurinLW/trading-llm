@@ -1,3 +1,3 @@
-import { initChart } from './chart';
+import { awaitData } from './chart';
 
-initChart();
+await awaitData();
