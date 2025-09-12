@@ -1,9 +1,10 @@
 import asyncio
+from datetime import datetime
 import logging
 import os
 import threading
 from dotenv import load_dotenv
-from server import Gateway, GrokAPIClient, StockDataClient
+from server import Gateway, GrokAPIClient, StockDataClient, TradingDataClient
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -32,8 +33,9 @@ async def main():
     thread = threading.Thread(target=gateway.run_server, daemon=True)
     thread.start()
 
-    grok_client = GrokAPIClient(api_key=grok_api_key)
-    stock_client = StockDataClient(alpaca_api_key, alpaca_secret, "Live", gateway, grok_client)
+    trading_client = TradingDataClient(alpaca_api_key, alpaca_secret)
+    grok_client = GrokAPIClient(api_key=grok_api_key, tradingClient=trading_client)
+    stock_client = StockDataClient(alpaca_api_key, alpaca_secret, gateway, grok_client)
 
     await stock_client.handleStream()
 

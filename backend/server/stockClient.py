@@ -41,20 +41,16 @@ def randomDateTime():
 
 
 class StockDataClient:
-    def __init__(self, api_key: str, secret_key: str, mode: str, gateway: Gateway, grokClient: GrokAPIClient):
-        self.mode = mode
+    def __init__(self, api_key: str, secret_key: str, gateway: Gateway, grokClient: GrokAPIClient):
         self.gateway = gateway
         self.stock_client = StockHistoricalDataClient(api_key, secret_key)
         self.grokClient = grokClient
-        self.lastBuySignal = None
-        self.lastSellSignal = None
         self.data = []
         self.run_stream(api_key, secret_key)
         logger.info("StockDataClient initialized")
 
     async def quote_data_handler(self, data):
         self.gateway.sendMessage(data)
-        print(data)
 
     def ping(self):
         while True:
@@ -86,7 +82,7 @@ class StockDataClient:
         if not startTime:
             startTime = randomDateTime()
 
-        request_params = StockBarsRequest(feed="iex", symbol_or_symbols=[symbol], timeframe=TimeFrame.Minute, start=startTime, end=startTime + timedelta(minutes=30))
+        request_params = StockBarsRequest(feed="iex", symbol_or_symbols=[symbol], timeframe=TimeFrame.Minute, start=startTime, end=startTime + timedelta(minutes=60))
         symbol_quotes = self.stock_client.get_stock_bars(request_params)
 
         data = symbol_quotes.data.get(symbol, [])
@@ -158,25 +154,13 @@ class StockDataClient:
             if len(self.data) > 60:
                 self.data.pop(0)
             
-            cutoff = 4
-            if self.lastBuySignal and self.lastSellSignal:
-                diff  = datetime.now() - self.lastBuySignal if self.lastBuySignal < self.lastSellSignal else self.lastSellSignal
-                cutoff = diff.total_seconds() // 60 + 4
-            elif self.lastBuySignal and not self.lastSellSignal:
-                diff  = datetime.now() - self.lastBuySignal
-                cutoff = diff.total_seconds() // 60 + 4
-            elif not self.lastBuySignal and self.lastSellSignal:
-                diff  = datetime.now() - self.lastSellSignal
-                cutoff = diff.total_seconds() // 60 + 4
-            shortList = self.data[-int(cutoff):]
+            shortList = self.data[-15:]
             shortList.append(dataPoint)
-
-            signal = self.grokClient.getSignal(shortList, self.lastBuySignal, self.lastSellSignal)
-            if signal:
-                dataPoint["sellSignal"] = signal == 'SELL'
-                dataPoint["buySignal"] = signal == 'BUY'
-                self.lastBuySignal = datetime.now() if signal == 'BUY' else self.lastBuySignal
-                self.lastSellSignal = datetime.now() if signal == 'SELL' else self.lastSellSignal
+            if datetime.now().hour >= 16:
+                signal = self.grokClient.getSignal(shortList)
+                if signal:
+                    dataPoint["sellSignal"] = signal == 'SELL'
+                    dataPoint["buySignal"] = signal == 'BUY'
 
             self.data.append(dataPoint)
 

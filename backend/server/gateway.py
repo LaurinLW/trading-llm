@@ -16,7 +16,6 @@ class Gateway:
             self.connected.remove(websocket)
 
     async def sendMessage(self, message):
-        print(message)
         messageStr = str(message).replace('\'', '\"').replace('False', 'false').replace('True', 'true')
         await asyncio.gather(*(ws.send(messageStr) for ws in self.connected), return_exceptions=True)
     
