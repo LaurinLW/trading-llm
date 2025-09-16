@@ -1,6 +1,7 @@
 import Chart from 'chart.js/auto';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import z from 'zod';
+import config from './config.js';
 
 Chart.register(annotationPlugin);
 
@@ -19,13 +20,6 @@ const StockDataSchema = z.array(
   })
 );
 
-const mockStockData = {
-  labels: ['2025-09-01', '2025-09-02', '2025-09-03', '2025-09-04', '2025-09-05', '2025-09-06'],
-  prices: [100, 102, 101, 105, 108, 107],
-  buySignals: [false, true, false, false, true, false],
-  sellSignals: [false, false, true, false, false, false],
-};
-
 function waitForWebSocketClose(websocket) {
   return new Promise((resolve) => {
     websocket.onclose = (event) => {
@@ -40,12 +34,12 @@ function waitForWebSocketClose(websocket) {
 }
 
 export async function awaitData() {
-  const response = await fetch('trading/api/data');
+  const response = await fetch(`${config.BACKEND_URL}/data`);
   const initialData = await response.json();
   const initialChartData = convertData(initialData);
   await drawChart(initialChartData);
 
-  const websocket = new WebSocket('wss://' + window.location.host + '/trading/ws');
+  const websocket = new WebSocket(`${config.WEBSOCKET_URL}`);
 
   websocket.onmessage = async (event) => {
     const data = event.data;
@@ -81,7 +75,7 @@ let myChart;
 
 async function drawChart(data) {
   if (myChart) {
-    myChart.destroy(); // Destroy existing if it exists
+    myChart.destroy();
   }
   const annotations = [];
 
@@ -90,7 +84,7 @@ async function drawChart(data) {
       annotations.push({
         type: 'point',
         xValue: data.labels[index],
-        yValue: data.prices[index],
+        yValue: data.prices[index], // Destroy existing if it exists
         radius: 5,
         backgroundColor: 'rgba(40, 255, 40, 1)',
         display: true,
@@ -183,6 +177,7 @@ async function drawChart(data) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       scales: {
         x: {
           title: {

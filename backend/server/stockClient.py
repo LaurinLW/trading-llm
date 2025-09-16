@@ -107,7 +107,7 @@ class StockDataClient:
         return self.data
 
     def getSettings(self):
-        settings = {}
+        settings = {"interval": self.interval}
         return {**self.grokClient.getSettings(), **settings}
 
     async def handleStream(self):

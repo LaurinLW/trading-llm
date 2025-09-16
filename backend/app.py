@@ -1,16 +1,34 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+
+from server import StockDataClient
+from server import TradingDataClient
 
 app = FastAPI()
 
 stock_client = None
+trading_client = None
 connected = set()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def set_stock_client(client):
+
+def set_stock_client(client: StockDataClient):
     global stock_client
     stock_client = client
+
+
+def set_trading_client(client: TradingDataClient):
+    global trading_client
+    trading_client = client
 
 
 async def send_message(message):
@@ -39,6 +57,22 @@ async def get_data():
         data = stock_client.getCurrentData()
         return JSONResponse(content=data)
     return JSONResponse(content={"error": "No stock client available"})
+
+
+@app.get("/positions")
+async def get_open_position():
+    if trading_client:
+        data = trading_client.getOpenPositions()
+        return JSONResponse(content=data)
+    return JSONResponse(content={"error": "No trading client available"})
+
+
+@app.get("/account")
+async def get_account():
+    if trading_client:
+        data = trading_client.getAccountInfo()
+        return JSONResponse(content=data)
+    return JSONResponse(content={"error": "No trading client available"})
 
 
 @app.get("/settings")

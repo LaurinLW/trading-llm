@@ -82,7 +82,7 @@ class GrokAPIClient:
             raise
 
     def getSettings(self):
-        return {"model": self.model}
+        return {"model": self.model, "disabled_grok": self.disable}
 
     def send_request(self, query: str, interval: int) -> Optional[Dict[str, Any]]:
         if self.disable:

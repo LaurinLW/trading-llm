@@ -4,7 +4,7 @@ import os
 import uvicorn
 from dotenv import load_dotenv
 from server import GrokAPIClient, StockDataClient, TradingDataClient
-from app import app, set_stock_client, send_message
+from app import app, set_stock_client, send_message, set_trading_client
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -45,6 +45,7 @@ async def main():
     grok_client = GrokAPIClient(api_key=grok_api_key, tradingClient=trading_client, disable=disable_grok)
     stock_client = StockDataClient(alpaca_api_key, alpaca_secret, send_message, grok_client, interval)
     set_stock_client(stock_client)
+    set_trading_client(trading_client)
 
     await stock_client.run_stream(alpaca_api_key, alpaca_secret)
 
