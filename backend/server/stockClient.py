@@ -61,7 +61,7 @@ class StockDataClient:
 
     def fetch_data(self, symbol: str, now: datetime) -> List[FinancialDataPoint]:
 
-        request_params = StockBarsRequest(feed=DataFeed("iex"), symbol_or_symbols=[symbol], timeframe=TimeFrame(self.interval, TimeFrameUnit("Min")), start=now - timedelta(days=1), end=now)
+        request_params = StockBarsRequest(feed=DataFeed("iex"), symbol_or_symbols=[symbol], timeframe=TimeFrame(self.interval, TimeFrameUnit("Min")), start=now - timedelta(days=4), end=now)
         symbol_quotes = self.stock_client.get_stock_bars(request_params)
 
         data = symbol_quotes.data.get(symbol, [])
@@ -107,8 +107,7 @@ class StockDataClient:
         return self.data
 
     def getSettings(self):
-        settings = {"interval": self.interval}
-        return {**self.grokClient.getSettings(), **settings}
+        return {**self.grokClient.getSettings(), "interval": self.interval, "paper": True }
 
     async def handleStream(self):
         self.data = self.fetch_data("TSLA", datetime.now())
@@ -117,7 +116,6 @@ class StockDataClient:
             if len(self.data) > 60:
                 self.data = self.data[-60:]
 
-            await self.send_func(self.data)
             result = await self.ws.recv()
 
             parsedResult = json.loads(result)
@@ -137,3 +135,4 @@ class StockDataClient:
                     signal = self.grokClient.getSignal(shortList, self.interval)
 
                 self.data.append(dataPoint)
+                await self.send_func(self.data)

@@ -8,84 +8,175 @@
   --color-white-60: rgba(255, 255, 255, 0.6);
   --color-white-10: rgba(255, 255, 255, 0.1);
   --color-white-05: rgba(255, 255, 255, 0.05);
-  --color-white-01: rgba(255, 255, 255, 0.01);
   --font-mono: 'Courier New', monospace;
-  --transition-default: all 0.3s ease;
-  --transition-transform: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-html,
-body {
-  overflow: hidden;
-}
-
-body {
-  background-color: black;
-  color: var(--color-white);
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  background: black;
+  color: white;
   font-family: var(--font-mono);
+  overflow-x: hidden;
 }
 
-.container {
-  width: 70vw;
-  height: 50vh;
+* {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-#stockChart {
-  max-width: 68vw;
-  width: 60vw;
+.stock-container,
+.portfolio-container,
+.main-layout > div:not(.positions):not(.settings):not(.account) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overflow-x: hidden;
 }
 
-.settings {
-  position: absolute;
-  right: 1rem;
-  top: 1rem;
-  width: 30vw;
-  height: 25vh;
+.stock-container::-webkit-scrollbar,
+.portfolio-container::-webkit-scrollbar,
+.main-layout > div:not(.positions):not(.settings):not(.account)::-webkit-scrollbar {
+  display: none;
 }
 
+.settings,
 .account {
-  position: absolute;
-  right: 1rem;
-  top: 26vh;
-  width: 30vw;
-  height: 25vh;
-}
-
-.positions {
-  width: 30vw;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  max-height: 45vh;
-  overflow-y: auto;
-  display: block;
-  position: absolute;
-  right: 1vw;
-  bottom: 2.5vh;
+  overflow: visible;
+  min-height: fit-content;
 }
 
 .positions table {
-  background-color: #1a1a1a;
+  scrollbar-width: auto;
+  -ms-overflow-style: auto;
+}
+
+.positions table::-webkit-scrollbar {
+  display: block;
+}
+
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 30%;
+  grid-template-rows: minmax(150px, 1fr) minmax(150px, 1fr) minmax(200px, 1.5fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+.stock-container {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  background: var(--color-white-05);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.settings {
+  grid-column: 2;
+  grid-row: 1;
+  background: var(--color-white-05);
+  border-radius: 8px;
+  padding: 0.75rem;
+  height: 100%;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.account {
+  grid-column: 2;
+  grid-row: 2;
+  background: var(--color-white-05);
+  border-radius: 8px;
+  padding: 0.75rem;
+  height: 100%;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.portfolio-container {
+  grid-column: 1;
+  grid-row: 3;
+  background: var(--color-white-05);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  min-height: 200px;
+}
+
+.positions {
+  grid-column: 2;
+  grid-row: 3;
+  background: var(--color-white-05);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 200px;
+  overflow: hidden;
+}
+
+#stockChart, #portfolioChart {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+}
+
+.positions table {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  table-layout: fixed;
+  max-width: 100%;
 }
 
 .positions h3 {
-  text-align: left;
-  padding-left: 1rem;
+  padding: 0.5rem;
+  margin: 0;
+  background: #1a1a1a;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-size: 16px;
 }
 
-th,
-td {
-  padding: 12px 15px;
+.positions table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1a1a1a;
+  flex: 1;
+}
+
+th, td {
+  padding: 6px 8px;
   text-align: left;
-  border-bottom: 1px solid #333333;
+  border-bottom: 1px solid #333;
+  font-size: 13px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  max-width: 0;
 }
 
 th {
-  background-color: #2c2c2c;
+  background: #2c2c2c;
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 14px;
-  color: #cccccc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 td:nth-child(5) {
@@ -96,20 +187,98 @@ td:nth-child(5).positive {
   color: #00cc00;
 }
 
-.positions::-webkit-scrollbar {
-  width: 8px;
+@media (max-width: 768px) {
+  html, body {
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  .main-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    min-height: 100vh;
+  }
+
+  .stock-container {
+    height: auto;
+    min-height: 350px;
+  }
+
+  .settings,
+  .account {
+    height: auto;
+    min-height: fit-content;
+    padding: 0.75rem;
+    overflow: visible;
+  }
+
+  .portfolio-container {
+    height: auto;
+    min-height: 280px;
+  }
+
+  .positions {
+    height: auto;
+    min-height: 150px;
+    overflow: visible;
+  }
+
+  .positions table {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  th, td {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .positions h3 {
+    padding: 0.5rem;
+  }
 }
 
-.positions::-webkit-scrollbar-track {
-  background: #1a1a1a;
-  border-radius: 8px;
-}
+@media (max-width: 480px) {
+  html, body {
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
 
-.positions::-webkit-scrollbar-thumb {
-  background: #444444;
-  border-radius: 8px;
-}
+  .main-layout {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
 
-.positions::-webkit-scrollbar-thumb:hover {
-  background: #666666;
+  .stock-container {
+    min-height: 300px;
+  }
+
+  .settings,
+  .account {
+    min-height: fit-content;
+    padding: 0.5rem;
+    overflow: visible;
+  }
+
+  .portfolio-container {
+    min-height: 250px;
+  }
+
+  .positions {
+    min-height: 120px;
+  }
+
+  th, td {
+    padding: 3px 4px;
+    font-size: 10px;
+  }
+
+  .positions h3 {
+    padding: 0.5rem;
+    font-size: 14px;
+  }
 }

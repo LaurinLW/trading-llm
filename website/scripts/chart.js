@@ -77,59 +77,6 @@ async function drawChart(data) {
   if (myChart) {
     myChart.destroy();
   }
-  const annotations = [];
-
-  data.buySignals.forEach((flagSet, index) => {
-    if (flagSet) {
-      annotations.push({
-        type: 'point',
-        xValue: data.labels[index],
-        yValue: data.prices[index], // Destroy existing if it exists
-        radius: 5,
-        backgroundColor: 'rgba(40, 255, 40, 1)',
-        display: true,
-      });
-
-      annotations.push({
-        type: 'label',
-        display: true,
-        backgroundColor: 'rgba(40, 255, 40, 1)',
-        content: 'Buy',
-        yAdjust: -25,
-        xValue: data.labels[index],
-        yValue: data.prices[index],
-        font: {
-          size: 13,
-        },
-      });
-    }
-  });
-
-  data.sellSignals.forEach((flagSet, index) => {
-    if (flagSet) {
-      annotations.push({
-        type: 'point',
-        xValue: data.labels[index],
-        yValue: data.prices[index],
-        radius: 5,
-        backgroundColor: 'rgba(255, 40, 40, 1)',
-        display: true,
-      });
-
-      annotations.push({
-        type: 'label',
-        display: true,
-        backgroundColor: 'rgba(255, 40, 40, 1)',
-        content: 'Sell',
-        yAdjust: -25,
-        xValue: data.labels[index],
-        yValue: data.prices[index],
-        font: {
-          size: 13,
-        },
-      });
-    }
-  });
 
   const ctx = document.getElementById('stockChart').getContext('2d');
   myChart = new Chart(ctx, {
@@ -209,9 +156,6 @@ async function drawChart(data) {
         legend: {
           display: true,
           position: 'top',
-        },
-        annotation: {
-          annotations: annotations,
         },
       },
     },

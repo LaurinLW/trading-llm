@@ -75,6 +75,14 @@ async def get_account():
     return JSONResponse(content={"error": "No trading client available"})
 
 
+@app.get("/portfoliovalue")
+async def get_portfolio():
+    if trading_client:
+        data = trading_client.getAccountValue()
+        return JSONResponse(content=data)
+    return JSONResponse(content={"error": "No trading client available"})
+
+
 @app.get("/settings")
 async def get_settings():
     if stock_client:

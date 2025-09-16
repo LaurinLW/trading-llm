@@ -17,6 +17,7 @@ export async function fetchSettings() {
         <h3>Grok Model: ${data.model}</h3>
         <p>Disabled: ${data.disabled_grok}</p>
         <p>Prompt interval: ${data.interval} min</p>
+        <p>Paper trading: ${data.paper}</p>
       </div>
     `;
   } catch (error) {

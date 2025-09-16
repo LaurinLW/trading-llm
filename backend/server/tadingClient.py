@@ -1,6 +1,7 @@
 import logging
+from datetime import datetime
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import GetOptionContractsRequest, MarketOrderRequest
+from alpaca.trading.requests import GetOptionContractsRequest, MarketOrderRequest, GetPortfolioHistoryRequest
 from alpaca.trading.enums import ContractType, AssetStatus, OrderSide, TimeInForce
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -19,6 +20,16 @@ class TradingDataClient:
         long_market_value = float(account.long_market_value)
         short_market_value = float(account.short_market_value)
         return {"portfolio_value": portfolio_value, "cash": cash, "buying_power": buying_power, "long_market_value": long_market_value, "short_market_value": short_market_value}
+    
+    def getAccountValue(self):
+        request = GetPortfolioHistoryRequest(period="5D", timeframe=f'15Min')
+        portfolio_history = self.trading_client.get_portfolio_history(request)
+        values = []
+        for i in range(len(portfolio_history.timestamp)):
+            timestamp = datetime.fromtimestamp(portfolio_history.timestamp[i]).isoformat()
+            equity = portfolio_history.equity[i]
+            values.append({"timestamp": timestamp, "equity": equity})
+        return values[-60:]
 
     def getOpenPositions(self):
         openPositions = []
