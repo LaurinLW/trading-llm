@@ -42,7 +42,12 @@ function waitForWebSocketClose(websocket) {
 }
 
 export async function awaitData() {
-  const websocket = new WebSocket("wss://" + window.location.host + "/trading/ws");
+  const response = await fetch('trading/api/data');
+  const initialData = await response.json();
+  const initialChartData = convertData(initialData);
+  await drawChart(initialChartData);
+
+  const websocket = new WebSocket("wss://" + window.location.host + "/ws");
 
   websocket.onmessage = async (event) => {
     const data = event.data

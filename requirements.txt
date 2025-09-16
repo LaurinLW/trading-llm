@@ -2,11 +2,11 @@ xai_sdk
 dotenv
 typing
 requests
-flask
-flask_cors
+fastapi 
+uvicorn
 alpaca-py
 waitress
+
 websockets
-websocket-client
 pytest
 pytest-mock
