@@ -25,7 +25,7 @@ async def websocket_endpoint(websocket: WebSocket):
     connected.add(websocket)
     try:
         while True:
-            await websocket.receive_text()  # Discard messages
+            await websocket.receive_text()
     except Exception as e:
         print(f"Client disconnected: {e}")
     finally:
@@ -37,6 +37,13 @@ async def websocket_endpoint(websocket: WebSocket):
 async def get_data():
     if stock_client:
         data = stock_client.getCurrentData()
-        data_str = str(data).replace("'", '"').replace("False", "false").replace("True", "true")
+        return JSONResponse(content=data)
+    return JSONResponse(content={"error": "No stock client available"})
+
+
+@app.get("/settings")
+async def get_settings():
+    if stock_client:
+        data = stock_client.getSettings()
         return JSONResponse(content=data)
     return JSONResponse(content={"error": "No stock client available"})

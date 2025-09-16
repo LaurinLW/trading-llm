@@ -13,11 +13,9 @@ const StockDataSchema = z.array(
     timestamp: z.string(),
     trade_count: z.number(),
     volume: z.number(),
-    buySignal: z.boolean(),
-    sellSignal: z.boolean(),
-    fiveMinMovingAverage: z.number(),
-    tenMinMovingAverage: z.number(),
-    sixMinRSI: z.number()
+    fivePeriodMovingAverage: z.number(),
+    tenPeriodMovingAverage: z.number(),
+    sixPeriodRSI: z.number(),
   })
 );
 
@@ -31,12 +29,12 @@ const mockStockData = {
 function waitForWebSocketClose(websocket) {
   return new Promise((resolve) => {
     websocket.onclose = (event) => {
-      console.log("WebSocket closed:", event.code, event.reason);
+      console.log('WebSocket closed:', event.code, event.reason);
       resolve(event);
     };
     websocket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      resolve(error); // also resolve on error, if you want to stop waiting
+      console.error('WebSocket error:', error);
+      resolve(error);
     };
   });
 }
@@ -47,10 +45,10 @@ export async function awaitData() {
   const initialChartData = convertData(initialData);
   await drawChart(initialChartData);
 
-  const websocket = new WebSocket("wss://" + window.location.host + "/ws");
+  const websocket = new WebSocket('wss://' + window.location.host + '/ws');
 
   websocket.onmessage = async (event) => {
-    const data = event.data
+    const data = event.data;
     console.log(data);
     const parsedData = JSON.parse(data);
     console.log(parsedData);
@@ -64,16 +62,16 @@ export async function awaitData() {
 function convertData(data) {
   const parsedData = StockDataSchema.parse(data);
   console.log(data);
-  const returnData = { labels: [], prices: [], buySignals: [], sellSignals: [], fiveMinMovingAverage: [], tenMinMovingAverage: [], sixMinRSI: [] };
+  const returnData = { labels: [], prices: [], buySignals: [], sellSignals: [], fivePeriodMovingAverage: [], tenPeriodMovingAverage: [], sixPeriodRSI: [] };
 
   parsedData.forEach((item) => {
     returnData.labels.push(item.timestamp);
     returnData.prices.push(item.close);
     returnData.sellSignals.push(item.sellSignal);
     returnData.buySignals.push(item.buySignal);
-    returnData.fiveMinMovingAverage.push(item.fiveMinMovingAverage);
-    returnData.tenMinMovingAverage.push(item.tenMinMovingAverage);
-    returnData.sixMinRSI.push(item.sixMinRSI);
+    returnData.fivePeriodMovingAverage.push(item.fivePeriodMovingAverage);
+    returnData.tenPeriodMovingAverage.push(item.tenPeriodMovingAverage);
+    returnData.sixPeriodRSI.push(item.sixPeriodRSI);
   });
 
   return returnData;
@@ -83,7 +81,7 @@ let myChart;
 
 async function drawChart(data) {
   if (myChart) {
-    myChart.destroy();  // Destroy existing if it exists
+    myChart.destroy(); // Destroy existing if it exists
   }
   const annotations = [];
 
@@ -155,8 +153,8 @@ async function drawChart(data) {
           yAxisID: 'y',
         },
         {
-          label: '5 min moving Average',
-          data: data.fiveMinMovingAverage,
+          label: '5 period moving Average',
+          data: data.fivePeriodMovingAverage,
           borderColor: 'rgba(68, 255, 0, 1)',
           backgroundColor: 'rgba(75, 192, 192, 0.2)',
           fill: false,
@@ -164,8 +162,8 @@ async function drawChart(data) {
           yAxisID: 'y',
         },
         {
-          label: '10 min moving Average',
-          data: data.tenMinMovingAverage,
+          label: '10 period moving Average',
+          data: data.tenPeriodMovingAverage,
           borderColor: 'rgba(204, 0, 255, 1)',
           backgroundColor: 'rgba(75, 192, 192, 0.2)',
           fill: false,
@@ -173,8 +171,8 @@ async function drawChart(data) {
           yAxisID: 'y',
         },
         {
-          label: '6 min Relative Strength Index',
-          data: data.sixMinRSI,
+          label: '6 period Relative Strength Index',
+          data: data.sixPeriodRSI,
           borderColor: 'rgba(255, 0, 0, 1)',
           backgroundColor: 'rgba(75, 192, 192, 0.2)',
           fill: false,
@@ -206,10 +204,10 @@ async function drawChart(data) {
             display: true,
             text: 'Relative Strength Index',
           },
-          suggestedMax: Math.max(...data.sixMinRSI) * 1.005,
+          suggestedMax: Math.max(...data.sixPeriodRSI) * 1.005,
           beginAtZero: false,
           position: 'right',
-        }
+        },
       },
       layout: {},
       plugins: {

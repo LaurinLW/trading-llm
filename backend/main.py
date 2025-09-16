@@ -29,9 +29,21 @@ async def main():
         logger.error("APCA_API_SECRET_KEY environment variable not set")
         raise ValueError("Please set the APCA_API_SECRET_KEY environment variable")
 
+    interval = os.getenv("INTERVAL")
+    if not interval:
+        interval = 5
+    else:
+        interval = int(interval)
+
+    disable_grok = os.getenv("DISABLE_GROK")
+    if not disable_grok:
+        disable_grok = False
+    else:
+        disable_grok = disable_grok == "True" or disable_grok == "true"
+
     trading_client = TradingDataClient(alpaca_api_key, alpaca_secret)
-    grok_client = GrokAPIClient(api_key=grok_api_key, tradingClient=trading_client)
-    stock_client = StockDataClient(alpaca_api_key, alpaca_secret, send_message, grok_client)
+    grok_client = GrokAPIClient(api_key=grok_api_key, tradingClient=trading_client, disable=disable_grok)
+    stock_client = StockDataClient(alpaca_api_key, alpaca_secret, send_message, grok_client, interval)
     set_stock_client(stock_client)
 
     await stock_client.run_stream(alpaca_api_key, alpaca_secret)

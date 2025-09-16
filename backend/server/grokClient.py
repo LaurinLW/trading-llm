@@ -70,24 +70,30 @@ def getTools():
 
 
 class GrokAPIClient:
-    def __init__(self, api_key: str, tradingClient: TradingDataClient, model: str = "grok-3-mini"):
+    def __init__(self, api_key: str, tradingClient: TradingDataClient, disable: bool, model: str = "grok-3-mini"):
         try:
             self.client = Client(api_key=api_key)
             self.model = model
             self.tradingClient = tradingClient
+            self.disable = disable
             logger.info(f"Grok API client initialized with model: {model}")
         except Exception as e:
             logger.error(f"Failed to initialize Grok API client: {e}")
             raise
 
-    def send_request(self, query: str) -> Optional[Dict[str, Any]]:
+    def getSettings(self):
+        return {"model": self.model}
+
+    def send_request(self, query: str, interval: int) -> Optional[Dict[str, Any]]:
+        if self.disable:
+            return
         try:
             logger.info(f"Sending query to Grok API")
             chat = self.client.chat.create(model=self.model, tools=getTools())
 
             chat.append(
                 system(
-                    f'You are a proffesional day trader. You will recieve stock information of TSLA now. You need to set flags for the trader and buy/sell options when you feel like it is the correct time. You can use positive or negative quantity when you buy options. If you encounter errors while executing tools, analyse them and take them into consideration. If you want to but the same option on mass buy it directly and do not make 10x tool-calls to get 10 options every time. These are you account values {self.tradingClient.getAccountInfo()}. These are your open positions {self.tradingClient.getOpenPositions()}. Analyse it and give an answer in this format: {{"flag": "BUY" | "SELL" | "NONE" }}. Do not say anything else except this flag json'
+                    f'You are a proffesional day trader. You will recieve data stock information of TSLA now. Each data point is of a {interval} minute interval. You need to buy/sell options when you feel like it is the correct time. You can use positive or negative quantity when you buy options. If you encounter errors while executing tools, analyse them and take them into consideration. If you want to but the same option on mass buy it directly and do not make 10x tool-calls to get 10 options every time. These are you account values {self.tradingClient.getAccountInfo()}. These are your open positions {self.tradingClient.getOpenPositions()}. Analyse it and give "DONE" as an answer when you are finished with buying/selling options'
                 )
             )
             chat.append(user(query))
@@ -126,10 +132,10 @@ class GrokAPIClient:
             logger.error(f"Error sending request to Grok API: {e}")
             return None
 
-    def getSignal(self, stockData):
+    def getSignal(self, stockData, interval: int):
         logger.info(str(stockData))
 
-        response = self.send_request(str(stockData))
+        response = self.send_request(str(stockData), interval)
         logger.info(response)
         if response:
             parsed_data = json.loads(response["content"])

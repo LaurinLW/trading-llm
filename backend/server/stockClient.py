@@ -1,17 +1,14 @@
 import json
 import logging
-import threading
-import time
 import asyncio
 from server.grokClient import GrokAPIClient
 from typing import TypedDict, List, Tuple
 from alpaca.data import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
-from alpaca.data.timeframe import TimeFrame
+from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+from alpaca.data.enums import DataFeed
 from datetime import datetime, timedelta
-import random
 import websockets
-
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -25,28 +22,18 @@ class FinancialDataPoint(TypedDict):
     timestamp: str
     trade_count: int
     volume: float
-    buySignal: bool
-    sellSignal: bool
-    fiveMinMovingAverage: float
-    tenMinMovingAverage: float
-    sixMinRSI: float
-
-
-def randomDateTime():
-    start_date = datetime.now() - timedelta(days=2 * 365)
-
-    random_days = random.randint(0, 2 * 365)
-    random_hour = random.randint(10, 18)
-    random_minute = random.randint(0, 59)
-    return start_date + timedelta(days=random_days, hours=random_hour - start_date.hour, minutes=random_minute - start_date.minute)
+    fivePeriodMovingAverage: float
+    tenPeriodMovingAverage: float
+    sixPeriodRSI: float
 
 
 class StockDataClient:
-    def __init__(self, api_key: str, secret_key: str, send_func, grokClient: GrokAPIClient):
+    def __init__(self, api_key: str, secret_key: str, send_func, grokClient: GrokAPIClient, interval: int):
         self.send_func = send_func
         self.stock_client = StockHistoricalDataClient(api_key, secret_key)
         self.grokClient = grokClient
         self.data = []
+        self.interval = interval
         logger.info("StockDataClient initialized")
 
     async def quote_data_handler(self, data):
@@ -72,33 +59,29 @@ class StockDataClient:
         result = await self.ws.recv()
         print(result)
 
-    def fetch_minute_data(self, symbol: str, time=None) -> Tuple[List[FinancialDataPoint], datetime]:
-        startTime = time
-        if not startTime:
-            startTime = randomDateTime()
+    def fetch_data(self, symbol: str, now: datetime) -> List[FinancialDataPoint]:
 
-        request_params = StockBarsRequest(feed="iex", symbol_or_symbols=[symbol], timeframe=TimeFrame.Minute, start=startTime, end=startTime + timedelta(minutes=60))
+        request_params = StockBarsRequest(feed=DataFeed("iex"), symbol_or_symbols=[symbol], timeframe=TimeFrame(self.interval, TimeFrameUnit("Min")), start=now - timedelta(days=1), end=now)
         symbol_quotes = self.stock_client.get_stock_bars(request_params)
 
         data = symbol_quotes.data.get(symbol, [])
 
         processed_data: list[FinancialDataPoint] = [
-            FinancialDataPoint(close=entry.close, high=entry.high, low=entry.low, open=entry.open, timestamp=entry.timestamp.isoformat(), trade_count=entry.trade_count, volume=entry.volume, sellSignal=False, buySignal=False)
-            for entry in data
+            FinancialDataPoint(close=entry.close, high=entry.high, low=entry.low, open=entry.open, timestamp=entry.timestamp.isoformat(), trade_count=entry.trade_count, volume=entry.volume) for entry in data
         ]
 
         for i in range(len(processed_data)):
-            processed_data[i]["fiveMinMovingAverage"] = self.calculateMovingAverage(processed_data[: i + 1], 5)
-            processed_data[i]["tenMinMovingAverage"] = self.calculateMovingAverage(processed_data[: i + 1], 10)
-            processed_data[i]["sixMinRSI"] = self.calculateRelativeStrengthIndex(processed_data[: i + 1], 6)
+            processed_data[i]["fivePeriodMovingAverage"] = self.calculateMovingAverage(processed_data[: i + 1], 5)
+            processed_data[i]["tenPeriodMovingAverage"] = self.calculateMovingAverage(processed_data[: i + 1], 10)
+            processed_data[i]["sixPeriodRSI"] = self.calculateRelativeStrengthIndex(processed_data[: i + 1], 6)
 
-        return processed_data, startTime
+        return processed_data
 
-    def calculateMovingAverage(self, data, minutes):
-        if len(data) >= minutes:
-            relevantData = data[-int(minutes) :]
+    def calculateMovingAverage(self, data, periods):
+        if len(data) >= periods:
+            relevantData = data[-int(periods) :]
             sumOfData = sum([dataPoint["close"] for dataPoint in relevantData])
-            return sumOfData / minutes
+            return sumOfData / periods
         return data[-1]["close"]
 
     def calculateRelativeStrengthIndex(self, data, minutes):
@@ -123,37 +106,34 @@ class StockDataClient:
     def getCurrentData(self):
         return self.data
 
+    def getSettings(self):
+        settings = {}
+        return {**self.grokClient.getSettings(), **settings}
+
     async def handleStream(self):
-        hours = 0
-        now = datetime.now()
-        now = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-        while self.data == []:
-            self.data, _ = self.fetch_minute_data("TSLA", now - timedelta(hours=hours))
-            hours = hours + 1
+        self.data = self.fetch_data("TSLA", datetime.now())
 
         while True:
+            if len(self.data) > 60:
+                self.data = self.data[-60:]
+
             await self.send_func(self.data)
             result = await self.ws.recv()
 
             parsedResult = json.loads(result)
             data = parsedResult[0]
-            dataPoint = FinancialDataPoint(close=data["c"], high=data["h"], low=data["l"], open=data["o"], timestamp=data["t"], trade_count=data["n"], volume=data["v"], sellSignal=False, buySignal=False)
+            dataPoint = FinancialDataPoint(close=data["c"], high=data["h"], low=data["l"], open=data["o"], timestamp=data["t"], trade_count=data["n"], volume=data["v"])
 
-            lastNineMinutes = self.data[-9:]
-            lastNineMinutes.append(dataPoint)
-            dataPoint["fiveMinMovingAverage"] = self.calculateMovingAverage(lastNineMinutes, 5)
-            dataPoint["tenMinMovingAverage"] = self.calculateMovingAverage(lastNineMinutes, 10)
-            dataPoint["sixMinRSI"] = self.calculateRelativeStrengthIndex(lastNineMinutes, 6)
+            if datetime.fromisoformat(dataPoint["timestamp"]).minute % self.interval == 0:
+                lastNineMinutes = self.data[-9:]
+                lastNineMinutes.append(dataPoint)
+                dataPoint["fivePeriodMovingAverage"] = self.calculateMovingAverage(lastNineMinutes, 5)
+                dataPoint["tenPeriodMovingAverage"] = self.calculateMovingAverage(lastNineMinutes, 10)
+                dataPoint["sixPeriodRSI"] = self.calculateRelativeStrengthIndex(lastNineMinutes, 6)
 
-            if len(self.data) > 60:
-                self.data.pop(0)
+                shortList = self.data[-15:]
+                shortList.append(dataPoint)
+                if datetime.now().hour >= 16:
+                    signal = self.grokClient.getSignal(shortList, self.interval)
 
-            shortList = self.data[-15:]
-            shortList.append(dataPoint)
-            if datetime.now().hour >= 16:
-                signal = self.grokClient.getSignal(shortList)
-                if signal:
-                    dataPoint["sellSignal"] = signal == "SELL"
-                    dataPoint["buySignal"] = signal == "BUY"
-
-            self.data.append(dataPoint)
+                self.data.append(dataPoint)
