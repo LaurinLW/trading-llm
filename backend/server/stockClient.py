@@ -133,9 +133,6 @@ class StockDataClient:
         while self.data == []:
             self.data, _ = self.fetch_minute_data('TSLA', now - timedelta(hours=hours))
             hours = hours + 1
-        #while True:
-        #    await self.gateway.sendMessage(self.data)
-        #    time.sleep(10)
 
         while True:
             await self.gateway.sendMessage(self.data)

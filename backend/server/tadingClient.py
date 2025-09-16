@@ -64,7 +64,7 @@ class TradingDataClient:
             logger.info(f'Bought option {market_order.id}')
         except Exception as e:
             return str(e)
-        return f"Success. Remaining Cash {self.getAccountInfo()["cash"]}"
+        return f"Success. Remaining Cash {self.getAccountInfo()['cash']}"
     
     def sellOption(self, symbol, quantity):
         try:
@@ -79,4 +79,4 @@ class TradingDataClient:
             logger.info(f'Solled option {market_order.id}')
         except Exception as e:
             return str(e)
-        return f"Success. New Cash {self.getAccountInfo()["cash"]}"
+        return f"Success. New Cash {self.getAccountInfo()['cash']}"

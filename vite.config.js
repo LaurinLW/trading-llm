@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  root: './website',
+  root: 'website',
+  base: '/trading/',
 });

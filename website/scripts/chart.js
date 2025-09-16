@@ -42,7 +42,7 @@ function waitForWebSocketClose(websocket) {
 }
 
 export async function awaitData() {
-  const websocket = new WebSocket("ws://localhost:8765");
+  const websocket = new WebSocket("wss://" + window.location.host + "/trading/ws");
 
   websocket.onmessage = async (event) => {
     const data = event.data
