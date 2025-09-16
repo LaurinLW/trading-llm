@@ -45,7 +45,7 @@ export async function awaitData() {
   const initialChartData = convertData(initialData);
   await drawChart(initialChartData);
 
-  const websocket = new WebSocket('wss://' + window.location.host + '/ws');
+  const websocket = new WebSocket('wss://' + window.location.host + '/trading/ws');
 
   websocket.onmessage = async (event) => {
     const data = event.data;
