@@ -121,8 +121,9 @@ class StockDataClient:
             parsedResult = json.loads(result)
             data = parsedResult[0]
             dataPoint = FinancialDataPoint(close=data["c"], high=data["h"], low=data["l"], open=data["o"], timestamp=data["t"], trade_count=data["n"], volume=data["v"])
-
+            print(f'Recieved data from websocket (timestamp: {dataPoint["timestamp"]})')
             if datetime.fromisoformat(dataPoint["timestamp"]).minute % self.interval == 0:
+                print("This timestamp will be added to the data")
                 lastNineMinutes = self.data[-9:]
                 lastNineMinutes.append(dataPoint)
                 dataPoint["fivePeriodMovingAverage"] = self.calculateMovingAverage(lastNineMinutes, 5)
@@ -131,8 +132,8 @@ class StockDataClient:
 
                 shortList = self.data[-15:]
                 shortList.append(dataPoint)
-                if datetime.now().hour >= 16:
-                    signal = self.grokClient.getSignal(shortList, self.interval)
+                print("Lets run grok")
+                signal = self.grokClient.getSignal(shortList, self.interval)
 
                 self.data.append(dataPoint)
                 await self.send_func(self.data)
