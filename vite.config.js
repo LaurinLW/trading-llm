@@ -7,6 +7,7 @@ export default defineConfig({
   root: 'website',
   base: '/trading/',
   define: {
-    'process.env': process.env,
+    'process.env.BACKEND_URL': JSON.stringify(process.env.BACKEND_URL),
+    'process.env.WEBSOCKET_URL': JSON.stringify(process.env.WEBSOCKET_URL),
   },
 });
