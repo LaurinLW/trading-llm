@@ -56,16 +56,26 @@ export async function awaitData() {
 function convertData(data) {
   const parsedData = StockDataSchema.parse(data);
   console.log(data);
-  const returnData = { labels: [], prices: [], buySignals: [], sellSignals: [], fivePeriodMovingAverage: [], tenPeriodMovingAverage: [], sixPeriodRSI: [] };
+  const returnData = { labels: [], prices: [], buySignals: [], sellSignals: [], fivePeriodMovingAverage: [], tenPeriodMovingAverage: [], sixPeriodRSI: [], dateChangeIndices: [] };
 
-  parsedData.forEach((item) => {
-    returnData.labels.push(item.timestamp);
+  let lastDate = null;
+
+  parsedData.forEach((item, index) => {
+    const date = new Date(item.timestamp);
+
+    if (lastDate && date.getDay() !== lastDate.getDay()) {
+      returnData.dateChangeIndices.push({ index: returnData.labels.length, date: date });
+    }
+
+    returnData.labels.push(`${date.getHours()}:${date.getMinutes() === 0 ? "00" : date.getMinutes()}`);
     returnData.prices.push(item.close);
     returnData.sellSignals.push(item.sellSignal);
     returnData.buySignals.push(item.buySignal);
     returnData.fivePeriodMovingAverage.push(item.fivePeriodMovingAverage);
     returnData.tenPeriodMovingAverage.push(item.tenPeriodMovingAverage);
     returnData.sixPeriodRSI.push(item.sixPeriodRSI);
+
+    lastDate = date;
   });
 
   return returnData;
@@ -77,6 +87,30 @@ async function drawChart(data) {
   if (myChart) {
     myChart.destroy();
   }
+
+  const annotations = [];
+
+  data.dateChangeIndices.forEach(({ index, date }) => {
+    annotations.push({
+      type: 'line',
+      xMin: index,
+      xMax: index,
+      borderColor: 'rgba(255,255,255,0.5)',
+      borderWidth: 1,
+      borderDash: [5, 5],
+      display: true,
+    });
+
+    annotations.push({
+      type: 'label',
+      content: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      enabled: true,
+      color: 'white',
+      xValue: index - 0.175,
+      yValue: Math.max(...data.prices) * 1.004,
+      font: { size: 12, family: 'Courier New' },
+    });
+  })
 
   const ctx = document.getElementById('stockChart').getContext('2d');
   myChart = new Chart(ctx, {
@@ -153,6 +187,7 @@ async function drawChart(data) {
       },
       layout: {},
       plugins: {
+        annotation: { annotations },
         legend: {
           display: true,
           position: 'top',

@@ -22,11 +22,22 @@ export async function awaitDataPortfolioValue() {
 function convertData(data) {
   const parsedData = PortfolioDataSchema.parse(data);
   console.log(data);
-  const returnData = { labels: [], values: [] };
+  const returnData = { labels: [], values: [], dateChangeIndices: [] };
 
-  parsedData.forEach((item) => {
-    returnData.labels.push(item.timestamp);
+  let lastDate = null;
+
+  parsedData.forEach((item, index) => {
+    const date = new Date(item.timestamp);
+    const currentDate = date.toDateString();
+
+    if (lastDate && currentDate !== lastDate) {
+      returnData.dateChangeIndices.push({ index: returnData.labels.length, date: date });
+    }
+
+    returnData.labels.push(`${date.getHours()}:${date.getMinutes() === 0 ? "00" : date.getMinutes()}`);
     returnData.values.push(item.equity);
+
+    lastDate = currentDate;
   });
 
   return returnData;
@@ -38,6 +49,30 @@ async function drawChart(data) {
   if (myChart) {
     myChart.destroy();
   }
+
+  const annotations = [];
+
+  data.dateChangeIndices.forEach(({ index, date }) => {
+    annotations.push({
+      type: 'line',
+      xMin: index,
+      xMax: index,
+      borderColor: 'rgba(255,255,255,0.5)',
+      borderWidth: 1,
+      borderDash: [5, 5],
+      display: true,
+    });
+
+    annotations.push({
+      type: 'label',
+      content: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      enabled: true,
+      color: 'white',
+      xValue: index - 0.175,
+      yValue: Math.max(...data.values) * 1.1,
+      font: { size: 14, family: 'Courier New' },
+    });
+  })
 
   const ctx = document.getElementById('portfolioChart').getContext('2d');
   myChart = new Chart(ctx, {
@@ -78,6 +113,9 @@ async function drawChart(data) {
       },
       layout: {},
       plugins: {
+        annotation: {
+          annotations
+        },
         legend: {
           display: true,
           position: 'top',

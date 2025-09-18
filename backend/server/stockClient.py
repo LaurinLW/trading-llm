@@ -1,6 +1,7 @@
 import json
 import logging
 import asyncio
+import threading
 from server.grokClient import GrokAPIClient
 from typing import TypedDict, List, Tuple
 from alpaca.data import StockHistoricalDataClient
@@ -107,7 +108,14 @@ class StockDataClient:
         return self.data
 
     def getSettings(self):
-        return {**self.grokClient.getSettings(), "interval": self.interval, "paper": True }
+        return {**self.grokClient.getSettings(), "interval": self.interval, "paper": True}
+
+    def run_grok_in_thread(self, shortList, interval):
+        try:
+            signal = self.grokClient.getSignal(shortList, interval)
+            logger.info(f"Grok signal processed in thread: {signal}")
+        except Exception as e:
+            logger.error(f"Error in grok thread: {e}")
 
     async def handleStream(self):
         self.data = self.fetch_data("TSLA", datetime.now())
@@ -132,8 +140,10 @@ class StockDataClient:
 
                 shortList = self.data[-15:]
                 shortList.append(dataPoint)
-                print("Lets run grok")
-                signal = self.grokClient.getSignal(shortList, self.interval)
+
+                grok_thread = threading.Thread(target=self.run_grok_in_thread, args=(shortList, self.interval))
+                grok_thread.daemon = True
+                grok_thread.start()
 
                 self.data.append(dataPoint)
                 await self.send_func(self.data)
