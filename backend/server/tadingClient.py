@@ -11,38 +11,47 @@ logger = logging.getLogger(__name__)
 class TradingDataClient:
     def __init__(self, api_key: str, secret_key: str):
         self.trading_client = TradingClient(api_key=api_key, secret_key=secret_key, paper=True)
+        self.lastAccountInfo = None
+        self.lastAccountValue = None
+        self.lastOpenPositions = None
         logger.info("TradingClient initialized")
 
     def getAccountInfo(self):
-        account = self.trading_client.get_account()
-        portfolio_value = float(account.portfolio_value)
-        cash = float(account.cash)
-        buying_power = float(account.buying_power)
-        long_market_value = float(account.long_market_value)
-        short_market_value = float(account.short_market_value)
-        return {"portfolio_value": portfolio_value, "cash": cash, "buying_power": buying_power, "long_market_value": long_market_value, "short_market_value": short_market_value}
+        if not self.lastAccountInfo or (datetime.now() - self.lastAccountInfo["time"]).total_seconds() / 60 >= 1:
+            account = self.trading_client.get_account()
+            portfolio_value = float(account.portfolio_value)
+            cash = float(account.cash)
+            buying_power = float(account.buying_power)
+            long_market_value = float(account.long_market_value)
+            short_market_value = float(account.short_market_value)
+            self.lastAccountInfo = {"accountInfo": {"portfolio_value": portfolio_value, "cash": cash, "buying_power": buying_power, "long_market_value": long_market_value, "short_market_value": short_market_value}, "time": datetime.now()}
+        return self.lastAccountInfo["accountInfo"]
 
     def getAccountValue(self):
-        request = GetPortfolioHistoryRequest(period="5D", timeframe=f"15Min")
-        portfolio_history = self.trading_client.get_portfolio_history(request)
-        values = []
-        for i in range(len(portfolio_history.timestamp)):
-            timestamp = datetime.fromtimestamp(portfolio_history.timestamp[i]).isoformat()
-            equity = portfolio_history.equity[i]
-            values.append({"timestamp": timestamp, "equity": equity})
-        return values[-60:]
+        if not self.lastAccountValue or (datetime.now() - self.lastAccountValue["time"]).total_seconds() / 60 > 15:
+            request = GetPortfolioHistoryRequest(period="5D", timeframe=f"15Min")
+            portfolio_history = self.trading_client.get_portfolio_history(request)
+            values = []
+            for i in range(len(portfolio_history.timestamp)):
+                timestamp = datetime.fromtimestamp(portfolio_history.timestamp[i]).isoformat()
+                equity = portfolio_history.equity[i]
+                values.append({"timestamp": timestamp, "equity": equity})
+            self.lastAccountValue = {"values": values, "time": datetime.now()}
+        return self.lastAccountValue["values"][-60:]
 
     def getOpenPositions(self):
-        openPositions = []
-        positions = self.trading_client.get_all_positions()
-        for position in positions:
-            symbol = position.symbol
-            qty = float(position.qty)
-            market_value = float(position.market_value)
-            cost_basis = float(position.cost_basis)
-            unrealized_pl = float(position.unrealized_pl)
-            openPositions.append({"symbol": symbol, "quantity": qty, "market_value": market_value, "original_cost": cost_basis, "unrealized_profit_loss": unrealized_pl})
-        return openPositions
+        if not self.lastOpenPositions or (datetime.now() - self.lastOpenPositions["time"]).total_seconds() / 60 >= 1:
+            openPositions = []
+            positions = self.trading_client.get_all_positions()
+            for position in positions:
+                symbol = position.symbol
+                qty = float(position.qty)
+                market_value = float(position.market_value)
+                cost_basis = float(position.cost_basis)
+                unrealized_pl = float(position.unrealized_pl)
+                openPositions.append({"symbol": symbol, "quantity": qty, "market_value": market_value, "original_cost": cost_basis, "unrealized_profit_loss": unrealized_pl})
+            self.lastOpenPositions = {"openPositions": openPositions, "time": datetime.now()}
+        return self.lastOpenPositions["openPositions"]
 
     def getOptions(self, strike_price_gte, strike_price_lte, option_type, exporation_date_gte):
         request = GetOptionContractsRequest(
