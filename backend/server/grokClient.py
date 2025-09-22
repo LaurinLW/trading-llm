@@ -70,7 +70,7 @@ def getTools():
 
 
 class GrokAPIClient:
-    def __init__(self, api_key: str, tradingClient: TradingDataClient, disable: bool, model: str = "grok-3-mini"):
+    def __init__(self, api_key: str, tradingClient: TradingDataClient, disable: bool, model: str = "grok-4-fast-reasoning"):
         try:
             self.client = Client(api_key=api_key)
             self.model = model
@@ -93,7 +93,7 @@ class GrokAPIClient:
 
             chat.append(
                 system(
-                    f'You are a proffesional day trader. You will recieve data stock information of TSLA now. Each data point is of a {interval} minute interval. You need to buy/sell options when you feel like it is the correct time. You can use positive or negative quantity when you buy options. If you encounter errors while executing tools, analyse them and take them into consideration. If you want to but the same option on mass buy it directly and do not make 10x tool-calls to get 10 options every time. These are you account values {self.tradingClient.getAccountInfo()}. These are your open positions {self.tradingClient.getOpenPositions()}. Analyse it and tell me your decission in 5 words maximum.'
+                    f"You are a proffesional day trader. You will recieve data stock information of TSLA now. Each data point is of a {interval} minute interval. You need to buy/sell options when you feel like it is the correct time. You can use positive or negative quantity when you buy options. If you encounter errors while executing tools, analyse them and take them into consideration. If you want to but the same option on mass buy it directly and do not make 10x tool-calls to get 10 options every time. These are you account values {self.tradingClient.getAccountInfo()}. These are your open positions {self.tradingClient.getOpenPositions()}. Analyse it and tell me your decission in 5 words maximum."
                 )
             )
             chat.append(user(query))
