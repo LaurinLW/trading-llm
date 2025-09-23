@@ -116,7 +116,7 @@ async function drawChart(data) {
       enabled: true,
       color: 'white',
       xValue: index - 0.175,
-      yValue: Math.max(...data.values) * 1.1,
+      yValue: Math.max(...data.values) * 1.004,
       font: { size: 14, family: 'Courier New' },
     });
   })
