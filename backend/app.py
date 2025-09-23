@@ -2,9 +2,18 @@ from fastapi import FastAPI, WebSocket
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+import json
+from dataclasses import asdict
+from datetime import datetime
 
 from server import StockDataClient
 from server import TradingDataClient
+
+def to_dict(obj):
+    d = asdict(obj)
+    if 'timestamp' in d and isinstance(d['timestamp'], datetime):
+        d['timestamp'] = d['timestamp'].isoformat()
+    return d
 
 app = FastAPI()
 
@@ -32,7 +41,9 @@ def set_trading_client(client: TradingDataClient):
 
 
 async def send_message(message):
-    message_str = str(message).replace("'", '"').replace("False", "false").replace("True", "true")
+    if isinstance(message, dict):
+        message = {k: [to_dict(item) if hasattr(item, '__dataclass_fields__') else item for item in v] if isinstance(v, list) else v for k, v in message.items()}
+    message_str = json.dumps(message)
     await asyncio.gather(*(ws.send_text(message_str) for ws in connected), return_exceptions=True)
 
 
@@ -55,7 +66,7 @@ async def websocket_endpoint(websocket: WebSocket):
 async def get_data():
     if stock_client:
         data = stock_client.getCurrentData()
-        return JSONResponse(content=data)
+        return JSONResponse(content={k: [to_dict(item) for item in v] for k, v in data.items()})
     return JSONResponse(content={"error": "No stock client available"})
 
 

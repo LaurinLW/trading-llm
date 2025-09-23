@@ -20,6 +20,47 @@ const StockDataSchema = z.array(
   })
 );
 
+const INTERVAL_KEY = 'stockInterval';
+
+function getCurrentInterval() {
+  return localStorage.getItem(INTERVAL_KEY) || 'fifteen';
+}
+
+function setCurrentInterval(interval) {
+  localStorage.setItem(INTERVAL_KEY, interval);
+}
+
+export function createStockControls() {
+  const controlsDiv = document.querySelector('.stock-controls');
+  if (!controlsDiv) return;
+
+  controlsDiv.innerHTML = '';
+
+  const intervals = [
+    { key: 'one', label: '1m' },
+    { key: 'fifteen', label: '15m' },
+    { key: 'hour', label: '1h' },
+    { key: 'day', label: '1d' }
+  ];
+
+  const currentInterval = getCurrentInterval();
+
+  intervals.forEach(({ key, label }) => {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.classList.toggle('active', key === currentInterval);
+    button.addEventListener('click', () => {
+      setCurrentInterval(key);
+      // Update active class
+      document.querySelectorAll('.stock-controls button').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      // Restart data fetching with new interval
+      awaitData(key);
+    });
+    controlsDiv.appendChild(button);
+  });
+}
+
 function waitForWebSocketClose(websocket) {
   return new Promise((resolve) => {
     websocket.onclose = (event) => {
@@ -33,7 +74,10 @@ function waitForWebSocketClose(websocket) {
   });
 }
 
-export async function awaitData() {
+export async function awaitData(interval = null) {
+  if (interval) {
+    setCurrentInterval(interval);
+  }
   const response = await fetch(`${config.BACKEND_URL}/data`);
   const initialData = await response.json();
   const initialChartData = convertData(initialData);
@@ -54,7 +98,13 @@ export async function awaitData() {
 }
 
 function convertData(data) {
-  const parsedData = StockDataSchema.parse(data);
+  let parsedData;
+  if (Array.isArray(data)) {
+    parsedData = StockDataSchema.parse(data);
+  } else {
+    const interval = getCurrentInterval();
+    parsedData = StockDataSchema.parse(data[interval] || []);
+  }
   console.log(data);
   const returnData = { labels: [], prices: [], buySignals: [], sellSignals: [], fivePeriodMovingAverage: [], tenPeriodMovingAverage: [], sixPeriodRSI: [], dateChangeIndices: [] };
 

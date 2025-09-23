@@ -1,5 +1,5 @@
 import { fetchAccount } from './account';
-import { awaitData } from './chart';
+import { awaitData, createStockControls } from './chart';
 import { fetchSettings } from './settings';
 import { fetchPostitions } from './positions';
 import {awaitDataPortfolioValue, createControls} from './portfolioChart';
@@ -12,4 +12,5 @@ setInterval(fetchPostitions, 60 * 1000);
 createControls();
 await awaitDataPortfolioValue();
 setInterval(awaitDataPortfolioValue, 60 * 1000);
+createStockControls();
 await awaitData();
