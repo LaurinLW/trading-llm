@@ -12,12 +12,59 @@ const PortfolioDataSchema = z.array(
   })
 );
 
-export async function awaitDataPortfolioValue() {
+const INTERVAL_KEY = 'portfolioInterval';
+
+function getCurrentInterval() {
+  return localStorage.getItem(INTERVAL_KEY) || 'fifteen';
+}
+
+function setCurrentInterval(interval) {
+  localStorage.setItem(INTERVAL_KEY, interval);
+}
+
+export async function awaitDataPortfolioValue(interval = null) {
+  if (interval) {
+    setCurrentInterval(interval);
+  }
+  const currentInterval = getCurrentInterval();
   const response = await fetch(`${config.BACKEND_URL}/portfoliovalue`);
   const data = await response.json();
-  const chartData = convertData(data);
+  const chartData = convertData(data[currentInterval]);
   await drawChart(chartData);
 }
+
+export function createControls() {
+  const controlsDiv = document.querySelector('.portfolio-controls');
+  if (!controlsDiv) return;
+
+  controlsDiv.innerHTML = '';
+
+  const intervals = [
+    { key: 'one', label: '1m' },
+    { key: 'fifteen', label: '15m' },
+    { key: 'hour', label: '1h' },
+    { key: 'day', label: '1d' }
+  ];
+
+  const currentInterval = getCurrentInterval();
+
+  intervals.forEach(({ key, label }) => {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.classList.toggle('active', key === currentInterval);
+    button.addEventListener('click', () => {
+      setCurrentInterval(key);
+      awaitDataPortfolioValue(key);
+      // Update active class
+      document.querySelectorAll('.portfolio-controls button').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+    });
+    controlsDiv.appendChild(button);
+  });
+}
+
+// Call createControls when the module loads
+createControls();
 
 function convertData(data) {
   const parsedData = PortfolioDataSchema.parse(data);

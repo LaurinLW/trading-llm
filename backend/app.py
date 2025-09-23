@@ -78,8 +78,8 @@ async def get_account():
 @app.get("/portfoliovalue")
 async def get_portfolio():
     if trading_client:
-        data = trading_client.getAccountValue()
-        return JSONResponse(content=data)
+        one, fifteen, hour, day = trading_client.getAccountValue()
+        return JSONResponse(content={"one": one, "fifteen": fifteen, "hour": hour, "day": day})
     return JSONResponse(content={"error": "No trading client available"})
 
 

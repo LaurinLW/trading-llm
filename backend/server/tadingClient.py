@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from alpaca.trading.client import TradingClient
+from alpaca.trading.models import PortfolioHistory
 from alpaca.trading.requests import GetOptionContractsRequest, MarketOrderRequest, GetPortfolioHistoryRequest
 from alpaca.trading.enums import ContractType, AssetStatus, OrderSide, TimeInForce
 
@@ -12,7 +13,10 @@ class TradingDataClient:
     def __init__(self, api_key: str, secret_key: str):
         self.trading_client = TradingClient(api_key=api_key, secret_key=secret_key, paper=True)
         self.lastAccountInfo = None
-        self.lastAccountValue = None
+        self.lastAccountValueOne = None
+        self.lastAccountValueFifteen = None
+        self.lastAccountValueHour = None
+        self.lastAccountValueDay = None
         self.lastOpenPositions = None
         logger.info("TradingClient initialized")
 
@@ -28,16 +32,29 @@ class TradingDataClient:
         return self.lastAccountInfo["accountInfo"]
 
     def getAccountValue(self):
-        if not self.lastAccountValue or (datetime.now() - self.lastAccountValue["time"]).total_seconds() / 60 > 15:
-            request = GetPortfolioHistoryRequest(period="5D", timeframe=f"15Min")
-            portfolio_history = self.trading_client.get_portfolio_history(request)
-            values = []
+        if not self.lastAccountValueOne or (datetime.now() - self.lastAccountValueOne["time"]).total_seconds() / 60 >= 1:
+            self.lastAccountValueOne = {"values": self.getAccountValueForInterval("1Min", "1D"), "time": datetime.now()}
+
+        if not self.lastAccountValueFifteen or (datetime.now() - self.lastAccountValueFifteen["time"]).total_seconds() / 60 >= 15:
+            self.lastAccountValueFifteen = {"values": self.getAccountValueForInterval("15Min", "5D"), "time": datetime.now()}
+        if not self.lastAccountValueHour or (datetime.now() - self.lastAccountValueHour["time"]).total_seconds() / 60 >= 60:
+            self.lastAccountValueHour = {"values": self.getAccountValueForInterval("1H", "5D"), "time": datetime.now()}
+
+        if not self.lastAccountValueDay or (datetime.now() - self.lastAccountValueDay["time"]).total_seconds() / 86400 >= 1:
+            self.lastAccountValueDay = {"values": self.getAccountValueForInterval("1D", "30D"), "time": datetime.now()}
+
+        return self.lastAccountValueOne["values"][-60:], self.lastAccountValueFifteen["values"][-60:], self.lastAccountValueHour["values"][-60:], self.lastAccountValueDay["values"][-60:]
+
+    def getAccountValueForInterval(self, timeframe, period):
+        request = GetPortfolioHistoryRequest(period=period, timeframe=timeframe)
+        portfolio_history = self.trading_client.get_portfolio_history(request)
+        values = []
+        if type(portfolio_history) is PortfolioHistory:
             for i in range(len(portfolio_history.timestamp)):
                 timestamp = datetime.fromtimestamp(portfolio_history.timestamp[i]).isoformat()
                 equity = portfolio_history.equity[i]
                 values.append({"timestamp": timestamp, "equity": equity})
-            self.lastAccountValue = {"values": values, "time": datetime.now()}
-        return self.lastAccountValue["values"][-60:]
+        return values
 
     def getOpenPositions(self):
         if not self.lastOpenPositions or (datetime.now() - self.lastOpenPositions["time"]).total_seconds() / 60 >= 1:
