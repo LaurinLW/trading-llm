@@ -122,11 +122,11 @@ class StockDataClient:
             return {"one": self.data_1min[-60:], "fifteen": self.data_15min[-60:], "hour": self.data_1hour[-60:], "day": self.data_1day[-60:]}
 
     def getSettings(self) -> Dict[str, Any]:
-        return {**self.grokClient.getSettings(), "interval": self.interval, "paper": True}
+        return {**self.grok_client.get_settings(), "interval": self.interval, "paper": True}
 
     def run_grok_in_thread(self, shortList: List[FinancialDataPoint], interval: int) -> None:
         try:
-            signal = self.grokClient.getSignal(shortList, interval)
+            signal = self.grok_client.get_signal(shortList, interval)
             logger.info(f"Grok signal processed in thread: {signal}")
         except Exception as e:
             logger.error(f"Error in grok thread: {e}")

@@ -77,7 +77,7 @@ async def get_data():
 @app.get("/positions")
 async def get_open_position():
     if trading_client:
-        data = trading_client.getOpenPositions()
+        data = trading_client.get_open_positions()
         return JSONResponse(content=data)
     return JSONResponse(content={"error": "No trading client available"})
 
@@ -85,7 +85,7 @@ async def get_open_position():
 @app.get("/account")
 async def get_account():
     if trading_client:
-        data = trading_client.getAccountInfo()
+        data = trading_client.get_account_info()
         return JSONResponse(content=data)
     return JSONResponse(content={"error": "No trading client available"})
 
