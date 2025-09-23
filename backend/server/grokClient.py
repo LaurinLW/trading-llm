@@ -1,13 +1,11 @@
 import json
 from typing import Optional, Dict, Any, TypedDict
-import logging
 from xai_sdk import Client
 from xai_sdk.chat import system, user, tool, tool_result
-from server.tadingClient import TradingDataClient
+from server.tradingClient import TradingDataClient
+from server.logger import get_logger
 
-# Set up logging for debugging and error tracking
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ChatResponse(TypedDict):
@@ -26,9 +24,9 @@ def getTools():
                     "strike_price_gte": {"type": "string", "description": "The strike price that should be filtered (greater then equal)."},
                     "strike_price_lte": {"type": "string", "description": "The strike price that should be filtered (less then equal)."},
                     "option_type": {"type": "string", "description": "If it should be a PUT or CALL (only PUT or CALL are valid)"},
-                    "exporation_date_gte": {"type": "string", "description": "The value which the experation date should start e.g. 2025-09-01."},
+                    "expiration_date_gte": {"type": "string", "description": "The value which the expiration date should start e.g. 2025-09-01."},
                 },
-                "required": ["strike_price_gte", "strike_price_lte", "option_type", "exporation_date_gte"],
+                "required": ["strike_price_gte", "strike_price_lte", "option_type", "expiration_date_gte"],
             },
         ),
         tool(
@@ -93,7 +91,7 @@ class GrokAPIClient:
 
             chat.append(
                 system(
-                    f"You are a proffesional day trader. You will recieve data stock information of TSLA now. Each data point is of a {interval} minute interval. You need to buy/sell options when you feel like it is the correct time. You can only sell or buy every {interval} minutes. Make tool calls to buy or sell options. You can use positive or negative quantity when you buy options. If you encounter errors while executing tools, analyse them and take them into consideration. If you want to but the same option on mass buy it directly and do not make 10x tool-calls to get 10 options every time. These are you account values {self.tradingClient.getAccountInfo()}. These are your open positions {self.tradingClient.getOpenPositions()}. Analyse it and tell me your decission in 5 words maximum."
+                    f"You are a professional day trader. You will receive stock data information of TSLA now. Each data point is of a {interval} minute interval. You need to buy/sell options when you feel like it is the correct time. You can only buy and / or sell every {interval} minutes. Make tool calls to buy or sell options. You can use positive or negative quantity when you buy options. If you encounter errors while executing tools, analyze them and take them into consideration. If you want to buy the same option in mass, buy it directly and do not make 10x tool-calls to get 10 options every time. These are your account values {self.tradingClient.getAccountInfo()}. These are your open positions {self.tradingClient.getOpenPositions()}. Analyze it and tell me your decision in 5 words maximum."
                 )
             )
             chat.append(user(query))
@@ -101,11 +99,11 @@ class GrokAPIClient:
 
             while response.tool_calls:
                 for tool_call in response.tool_calls:
-                    print(response.tool_calls)
+                    logger.info(str(response.tool_calls))
                     tool_name = tool_call.function.name
                     tool_args = json.loads(tool_call.function.arguments)
                     if tool_name == "get_options":
-                        result = self.tradingClient.getOptions(tool_args["strike_price_gte"], tool_args["strike_price_lte"], tool_args["option_type"], tool_args["exporation_date_gte"])
+                        result = self.tradingClient.getOptions(tool_args["strike_price_gte"], tool_args["strike_price_lte"], tool_args["option_type"], tool_args["expiration_date_gte"])
                     elif tool_name == "buy_option":
                         result = self.tradingClient.buyOption(tool_args["symbol"], tool_args["quantity"], tool_args["stop_price"], tool_args["profit_price"])
                     elif tool_name == "close_option":

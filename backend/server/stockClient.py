@@ -1,8 +1,8 @@
 import json
-import logging
 import asyncio
 import threading
 from server.grokClient import GrokAPIClient
+from server.logger import get_logger
 from typing import List, Tuple
 from dataclasses import dataclass
 from alpaca.data import StockHistoricalDataClient
@@ -12,8 +12,7 @@ from alpaca.data.enums import DataFeed
 from datetime import datetime, timedelta
 import websockets
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -32,6 +31,8 @@ class FinancialDataPoint:
 
 class StockDataClient:
     def __init__(self, api_key: str, secret_key: str, send_func, grokClient: GrokAPIClient, interval: int):
+        if not isinstance(interval, int) or interval <= 0:
+            raise ValueError("interval must be a positive integer")
         self.send_func = send_func
         self.stock_client = StockHistoricalDataClient(api_key, secret_key)
         self.grokClient = grokClient
@@ -57,13 +58,13 @@ class StockDataClient:
         asyncio.create_task(self.ping())
         await self.ws.send(json.dumps(data))
         result = await self.ws.recv()
-        print(result)
+        logger.info(result)
         result = await self.ws.recv()
-        print(result)
+        logger.info(result)
 
         await self.ws.send(json.dumps({"action": "subscribe", "bars": ["TSLA"]}))
         result = await self.ws.recv()
-        print(result)
+        logger.info(result)
 
     def fetch_data(self, symbol: str, now: datetime, interval) -> List[FinancialDataPoint]:
         timeframe = None
@@ -162,9 +163,9 @@ class StockDataClient:
             if (dataPoint.timestamp - self.dataDay[-1].timestamp).total_seconds() / 60 >= 60 * 24:
                 self.dataDay.append(dataPoint)
 
-            print(f"Recieved data from websocket (timestamp: {dataPoint.timestamp})")
+            logger.info(f"Received data from websocket (timestamp: {dataPoint.timestamp})")
             if dataPoint.timestamp.minute % self.interval == 0:
-                print("This timestamp will be added to the data")
+                logger.info("This timestamp will be added to the data")
                 shortList = self.fetch_data("TSLA", datetime.now(), self.interval)
                 lastNineIntervals = shortList[-9:]
                 lastNineIntervals.append(dataPoint)

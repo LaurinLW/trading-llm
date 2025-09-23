@@ -1,12 +1,11 @@
-import logging
 from datetime import datetime
 from alpaca.trading.client import TradingClient
 from alpaca.trading.models import PortfolioHistory
 from alpaca.trading.requests import GetOptionContractsRequest, MarketOrderRequest, GetPortfolioHistoryRequest
 from alpaca.trading.enums import ContractType, AssetStatus, OrderSide, TimeInForce
+from server.logger import get_logger
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class TradingDataClient:
@@ -70,12 +69,23 @@ class TradingDataClient:
             self.lastOpenPositions = {"openPositions": openPositions, "time": datetime.now()}
         return self.lastOpenPositions["openPositions"]
 
-    def getOptions(self, strike_price_gte, strike_price_lte, option_type, exporation_date_gte):
+    def getOptions(self, strike_price_gte, strike_price_lte, option_type, expiration_date_gte):
+        try:
+            strike_price_gte = float(strike_price_gte)
+            strike_price_lte = float(strike_price_lte)
+            if strike_price_gte > strike_price_lte:
+                raise ValueError("strike_price_gte must be less than or equal to strike_price_lte")
+            option_type = option_type.upper()
+            if option_type not in ["CALL", "PUT"]:
+                raise ValueError("option_type must be 'CALL' or 'PUT'")
+            datetime.fromisoformat(expiration_date_gte)  # validate date format
+        except ValueError as e:
+            return str(e)
         request = GetOptionContractsRequest(
             underlying_symbols=["TSLA"],
-            expiration_date_gte=exporation_date_gte,
-            strike_price_gte=strike_price_gte,
-            strike_price_lte=strike_price_lte,
+            expiration_date_gte=expiration_date_gte,
+            strike_price_gte=str(strike_price_gte),
+            strike_price_lte=str(strike_price_lte),
             type=ContractType.CALL if option_type == "CALL" else ContractType.PUT,
             limit=15,
             status=AssetStatus.ACTIVE,
@@ -84,6 +94,14 @@ class TradingDataClient:
         return contracts
 
     def buyOption(self, symbol, quantity, stop_price, profit_price):
+        if not isinstance(symbol, str) or not symbol.strip():
+            return "Invalid symbol"
+        if not isinstance(quantity, (int, float)) or quantity == 0:
+            return "Quantity must be a non-zero number"
+        if not isinstance(stop_price, (int, float)) or stop_price <= 0:
+            return "stop_price must be a positive number"
+        if not isinstance(profit_price, (int, float)) or profit_price <= 0:
+            return "profit_price must be a positive number"
         try:
             market_order_data = MarketOrderRequest(symbol=symbol, qty=quantity, side=OrderSide.BUY, time_in_force=TimeInForce.DAY, stop_loss={"stop_price": stop_price}, take_profit={"limit_price": profit_price})
 
@@ -94,9 +112,13 @@ class TradingDataClient:
                 return "Order was rejected due to the option not being covered. Try a different option."
             else:
                 return str(e)
-        return f"Success. Remaining Cash {self.getAccountInfo()['cash']}"
+        return f"Success. Remaining cash: {self.getAccountInfo()['cash']}"
 
     def sellOption(self, symbol, quantity):
+        if not isinstance(symbol, str) or not symbol.strip():
+            return "Invalid symbol"
+        if not isinstance(quantity, (int, float)) or quantity == 0:
+            return "Quantity must be a non-zero number"
         try:
             market_order_data = MarketOrderRequest(
                 symbol=symbol,
@@ -106,7 +128,7 @@ class TradingDataClient:
             )
 
             market_order = self.trading_client.submit_order(market_order_data)
-            logger.info(f"Solled option {market_order.id}")
+            logger.info(f"Sold option {market_order.id}")
         except Exception as e:
             return str(e)
-        return f"Success. New Cash {self.getAccountInfo()['cash']}"
+        return f"Success. New cash: {self.getAccountInfo()['cash']}"

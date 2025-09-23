@@ -6,8 +6,12 @@ import json
 from dataclasses import asdict
 from datetime import datetime
 
-from server import StockDataClient
-from server import TradingDataClient
+from config import Config
+from server import StockDataClient, TradingDataClient, get_logger
+
+logger = get_logger(__name__)
+
+config = Config()
 
 def to_dict(obj):
     d = asdict(obj)
@@ -23,7 +27,7 @@ connected = set()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=config.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,16 +54,16 @@ async def send_message(message):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("WebSocket connection established")
+    logger.info("WebSocket connection established")
     connected.add(websocket)
     try:
         while True:
             await websocket.receive_text()
     except Exception as e:
-        print(f"Client disconnected: {e}")
+        logger.info(f"Client disconnected: {e}")
     finally:
         connected.remove(websocket)
-        print("WebSocket connection closed")
+        logger.info("WebSocket connection closed")
 
 
 @app.get("/data")
