@@ -14,8 +14,8 @@ class Config:
     cors_origins: typing.List[str] = dataclasses.field(default_factory=lambda: [os.getenv("CORS_ORIGINS", "http://localhost:5173")])
 
     def __post_init__(self):
-        if not self.grok_api_key:
-            raise ValueError("GROK_API_KEY environment variable is required")
+        if not self.disable_grok and not self.grok_api_key:
+            raise ValueError("GROK_API_KEY environment variable is required unless DISABLE_GROK is true")
         if not self.alpaca_api_key:
             raise ValueError("APCA_API_KEY_ID environment variable is required")
         if not self.alpaca_secret:

@@ -91,7 +91,7 @@ class GrokAPIClient:
 
             chat.append(
                 system(
-                    f"You are a professional day trader. You will receive stock data information of TSLA now. Each data point is of a {interval} minute interval. You need to buy/sell options when you feel like it is the correct time. You can only buy and / or sell every {interval} minutes. Make tool calls to buy or sell options. You can use positive or negative quantity when you buy options. If you encounter errors while executing tools, analyze them and take them into consideration. If you want to buy the same option in mass, buy it directly and do not make 10x tool-calls to get 10 options every time. These are your account values {self.trading_client.get_account_info()}. These are your open positions {self.trading_client.get_open_positions()}. Analyze it and tell me your decision in 5 words maximum."
+                    f"You are a professional day trader. You will receive stock data information of TSLA now. Each data point is of a {interval} minute interval. You need to buy/sell options when you feel like it is the correct time. You can only buy and / or sell every {interval} minutes. Make tool calls to buy or sell options. You can use positive or negative quantity when you buy options. If you encounter errors while executing tools, analyze them and take them into consideration. If you want to buy the same option in mass, buy it directly and do not make 10x tool-calls to get 10 options every time. These are your account values {json.dumps(self.trading_client.get_account_info())}. These are your open positions {json.dumps(self.trading_client.get_open_positions())}. Analyze it and tell me your decision in 5 words maximum."
                 )
             )
             chat.append(user(query))
@@ -129,5 +129,5 @@ class GrokAPIClient:
             return None
 
     def get_signal(self, stock_data: str, interval: int) -> Optional[Dict[str, Any]]:
-        response = self.send_request(str(stockData), interval)
+        response = self.send_request(stock_data, interval)
         return response

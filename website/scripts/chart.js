@@ -12,11 +12,11 @@ const StockDataSchema = z.array(
     low: z.number(),
     open: z.number(),
     timestamp: z.string(),
-    trade_count: z.number(),
+    tradeCount: z.number(),
     volume: z.number(),
     fivePeriodMovingAverage: z.number(),
     tenPeriodMovingAverage: z.number(),
-    sixPeriodRSI: z.number(),
+    sixPeriodRsi: z.number(),
   })
 );
 
@@ -106,7 +106,7 @@ function convertData(data) {
     parsedData = StockDataSchema.parse(data[interval] || []);
   }
   console.log(data);
-  const returnData = { labels: [], prices: [], buySignals: [], sellSignals: [], fivePeriodMovingAverage: [], tenPeriodMovingAverage: [], sixPeriodRSI: [], dateChangeIndices: [] };
+  const returnData = { labels: [], prices: [], buySignals: [], sellSignals: [], fivePeriodMovingAverage: [], tenPeriodMovingAverage: [], sixPeriodRsi: [], dateChangeIndices: [] };
 
   let lastDate = null;
 
@@ -117,13 +117,13 @@ function convertData(data) {
       returnData.dateChangeIndices.push({ index: returnData.labels.length, date: date });
     }
 
-    returnData.labels.push(`${date.getHours()}:${date.getMinutes() === 0 ? "00" : date.getMinutes()}`);
+    returnData.labels.push(`${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`);
     returnData.prices.push(item.close);
     returnData.sellSignals.push(item.sellSignal);
     returnData.buySignals.push(item.buySignal);
     returnData.fivePeriodMovingAverage.push(item.fivePeriodMovingAverage);
     returnData.tenPeriodMovingAverage.push(item.tenPeriodMovingAverage);
-    returnData.sixPeriodRSI.push(item.sixPeriodRSI);
+    returnData.sixPeriodRsi.push(item.sixPeriodRsi);
 
     lastDate = date;
   });
@@ -197,7 +197,7 @@ async function drawChart(data) {
         },
         {
           label: '6 period Relative Strength Index',
-          data: data.sixPeriodRSI,
+          data: data.sixPeriodRsi,
           borderColor: 'rgba(255, 0, 0, 1)',
           backgroundColor: 'rgba(75, 192, 192, 0.2)',
           fill: false,
@@ -230,7 +230,7 @@ async function drawChart(data) {
             display: true,
             text: 'Relative Strength Index',
           },
-          suggestedMax: Math.max(...data.sixPeriodRSI) * 1.005,
+          suggestedMax: Math.max(...data.sixPeriodRsi) * 1.005,
           beginAtZero: false,
           position: 'right',
         },

@@ -1,4 +1,10 @@
 :80 {
     root * /usr/share/caddy
     file_server
+
+    # Proxy API requests to backend
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy localhost:8000
+    }
 }

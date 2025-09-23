@@ -69,13 +69,13 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/data")
 async def get_data():
     if stock_client:
-        data = await stock_client.getCurrentData()
+        data = await stock_client.get_current_data()
         return JSONResponse(content={k: [to_dict(item) for item in v] for k, v in data.items()})
     return JSONResponse(content={"error": "No stock client available"})
 
 
 @app.get("/positions")
-async def get_open_position():
+async def get_positions():
     if trading_client:
         data = trading_client.get_open_positions()
         return JSONResponse(content=data)
@@ -83,7 +83,7 @@ async def get_open_position():
 
 
 @app.get("/account")
-async def get_account():
+async def get_account_info():
     if trading_client:
         data = trading_client.get_account_info()
         return JSONResponse(content=data)
@@ -91,9 +91,9 @@ async def get_account():
 
 
 @app.get("/portfoliovalue")
-async def get_portfolio():
+async def get_portfolio_value():
     if trading_client:
-        one, fifteen, hour, day = trading_client.getAccountValue()
+        one, fifteen, hour, day = trading_client.get_account_value()
         return JSONResponse(content={"one": one, "fifteen": fifteen, "hour": hour, "day": day})
     return JSONResponse(content={"error": "No trading client available"})
 
@@ -101,6 +101,6 @@ async def get_portfolio():
 @app.get("/settings")
 async def get_settings():
     if stock_client:
-        data = stock_client.getSettings()
+        data = stock_client.get_settings()
         return JSONResponse(content=data)
     return JSONResponse(content={"error": "No stock client available"})
