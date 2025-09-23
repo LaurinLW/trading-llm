@@ -3,7 +3,7 @@ import asyncio
 import threading
 from server.grokClient import GrokAPIClient
 from server.logger import get_logger
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Callable, Any
 from dataclasses import dataclass
 from alpaca.data import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
@@ -30,29 +30,30 @@ class FinancialDataPoint:
 
 
 class StockDataClient:
-    def __init__(self, api_key: str, secret_key: str, send_func, grokClient: GrokAPIClient, interval: int):
+    def __init__(self, api_key: str, secret_key: str, send_func: Callable, grokClient: GrokAPIClient, interval: int) -> None:
         if not isinstance(interval, int) or interval <= 0:
             raise ValueError("interval must be a positive integer")
-        self.send_func = send_func
+        self.send_func: Callable = send_func
         self.stock_client = StockHistoricalDataClient(api_key, secret_key)
-        self.grokClient = grokClient
-        self.dataOne = []
-        self.dataFifteen = []
-        self.dataHour = []
-        self.dataDay = []
-        self.interval = interval
+        self.grokClient: GrokAPIClient = grokClient
+        self.data_1min: List[FinancialDataPoint] = []
+        self.data_15min: List[FinancialDataPoint] = []
+        self.data_1hour: List[FinancialDataPoint] = []
+        self.data_1day: List[FinancialDataPoint] = []
+        self.interval: int = interval
+        self.data_lock = asyncio.Lock()
         logger.info("StockDataClient initialized")
 
-    async def quote_data_handler(self, data):
+    async def quote_data_handler(self, data) -> None:
         await self.send_func(data)
 
-    async def ping(self):
+    async def ping(self) -> None:
         while True:
             if self.ws and self.ws.state == websockets.State.OPEN:
                 await self.ws.ping()
             await asyncio.sleep(30)
 
-    async def run_stream(self, api_key: str, secret_key: str):
+    async def run_stream(self, api_key: str, secret_key: str) -> None:
         data = {"action": "auth", "key": api_key, "secret": secret_key}
         self.ws = await websockets.connect("wss://stream.data.alpaca.markets/v2/iex")
         asyncio.create_task(self.ping())
@@ -66,7 +67,7 @@ class StockDataClient:
         result = await self.ws.recv()
         logger.info(result)
 
-    def fetch_data(self, symbol: str, now: datetime, interval) -> List[FinancialDataPoint]:
+    def fetch_data(self, symbol: str, now: datetime, interval: int) -> List[FinancialDataPoint]:
         timeframe = None
         if interval < 60:
             timeframe = TimeFrame(interval, TimeFrameUnit("Min"))
@@ -90,14 +91,14 @@ class StockDataClient:
 
         return processed_data
 
-    def calculateMovingAverage(self, data, periods):
+    def calculateMovingAverage(self, data: List[FinancialDataPoint], periods: int) -> float:
         if len(data) >= periods:
             relevantData = data[-int(periods) :]
             sumOfData = sum([dataPoint.close for dataPoint in relevantData])
             return sumOfData / periods
         return data[-1].close
 
-    def calculateRelativeStrengthIndex(self, data, minutes):
+    def calculateRelativeStrengthIndex(self, data: List[FinancialDataPoint], minutes: int) -> float:
         relevantData = data[-int(minutes) :]
         win = []
         loss = []
@@ -116,52 +117,55 @@ class StockDataClient:
             return 100 - (100 / (1 + rs))
         return 100
 
-    def getCurrentData(self):
-        return {"one": self.dataOne[-60:], "fifteen": self.dataFifteen[-60:], "hour": self.dataHour[-60:], "day": self.dataDay[-60:]}
+    async def getCurrentData(self) -> Dict[str, List[FinancialDataPoint]]:
+        async with self.data_lock:
+            return {"one": self.data_1min[-60:], "fifteen": self.data_15min[-60:], "hour": self.data_1hour[-60:], "day": self.data_1day[-60:]}
 
-    def getSettings(self):
+    def getSettings(self) -> Dict[str, Any]:
         return {**self.grokClient.getSettings(), "interval": self.interval, "paper": True}
 
-    def run_grok_in_thread(self, shortList, interval):
+    def run_grok_in_thread(self, shortList: List[FinancialDataPoint], interval: int) -> None:
         try:
             signal = self.grokClient.getSignal(shortList, interval)
             logger.info(f"Grok signal processed in thread: {signal}")
         except Exception as e:
             logger.error(f"Error in grok thread: {e}")
 
-    async def handleStream(self):
-        self.dataOne = self.fetch_data("TSLA", datetime.now(), 1)
-        self.dataFifteen = self.fetch_data("TSLA", datetime.now(), 15)
-        self.dataHour = self.fetch_data("TSLA", datetime.now(), 60)
-        self.dataDay = self.fetch_data("TSLA", datetime.now(), 60 * 24)
+    async def handleStream(self) -> None:
+        async with self.data_lock:
+            self.data_1min = self.fetch_data("TSLA", datetime.now(), 1)
+            self.data_15min = self.fetch_data("TSLA", datetime.now(), 15)
+            self.data_1hour = self.fetch_data("TSLA", datetime.now(), 60)
+            self.data_1day = self.fetch_data("TSLA", datetime.now(), 60 * 24)
 
         while True:
-            if len(self.dataOne) > 60:
-                self.dataOne = self.dataOne[-60:]
-            if len(self.dataFifteen) > 60:
-                self.dataFifteen = self.dataFifteen[-60:]
-            if len(self.dataHour) > 60:
-                self.dataHour = self.dataHour[-60:]
-            if len(self.dataDay) > 60:
-                self.dataDay = self.dataDay[-60:]
-
             result = await self.ws.recv()
 
             parsedResult = json.loads(result)
             data = parsedResult[0]
             dataPoint = FinancialDataPoint(close=data["c"], high=data["h"], low=data["l"], open=data["o"], timestamp=datetime.fromisoformat(data["t"]), trade_count=int(data["n"] or 0), volume=data["v"])
 
-            if (dataPoint.timestamp - self.dataOne[-1].timestamp).total_seconds() / 60 >= 1:
-                self.dataOne.append(dataPoint)
+            async with self.data_lock:
+                if len(self.data_1min) > 60:
+                    self.data_1min = self.data_1min[-60:]
+                if len(self.data_15min) > 60:
+                    self.data_15min = self.data_15min[-60:]
+                if len(self.data_1hour) > 60:
+                    self.data_1hour = self.data_1hour[-60:]
+                if len(self.data_1day) > 60:
+                    self.data_1day = self.data_1day[-60:]
 
-            if (dataPoint.timestamp - self.dataFifteen[-1].timestamp).total_seconds() / 60 >= 15:
-                self.dataFifteen.append(dataPoint)
+                if (dataPoint.timestamp - self.data_1min[-1].timestamp).total_seconds() / 60 >= 1:
+                    self.data_1min.append(dataPoint)
 
-            if (dataPoint.timestamp - self.dataHour[-1].timestamp).total_seconds() / 60 >= 60:
-                self.dataHour.append(dataPoint)
+                if (dataPoint.timestamp - self.data_15min[-1].timestamp).total_seconds() / 60 >= 15:
+                    self.data_15min.append(dataPoint)
 
-            if (dataPoint.timestamp - self.dataDay[-1].timestamp).total_seconds() / 60 >= 60 * 24:
-                self.dataDay.append(dataPoint)
+                if (dataPoint.timestamp - self.data_1hour[-1].timestamp).total_seconds() / 60 >= 60:
+                    self.data_1hour.append(dataPoint)
+
+                if (dataPoint.timestamp - self.data_1day[-1].timestamp).total_seconds() / 60 >= 60 * 24:
+                    self.data_1day.append(dataPoint)
 
             logger.info(f"Received data from websocket (timestamp: {dataPoint.timestamp})")
             if dataPoint.timestamp.minute % self.interval == 0:
@@ -177,4 +181,4 @@ class StockDataClient:
                 grok_thread.daemon = True
                 grok_thread.start()
 
-            await self.send_func({"one": self.dataOne, "fifteen": self.dataFifteen, "hour": self.dataHour, "day": self.dataDay})
+            await self.send_func({"one": self.data_1min, "fifteen": self.data_15min, "hour": self.data_1hour, "day": self.data_1day})

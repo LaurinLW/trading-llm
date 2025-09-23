@@ -99,7 +99,6 @@ class GrokAPIClient:
 
             while response.tool_calls:
                 for tool_call in response.tool_calls:
-                    logger.info(str(response.tool_calls))
                     tool_name = tool_call.function.name
                     tool_args = json.loads(tool_call.function.arguments)
                     if tool_name == "get_options":
@@ -112,7 +111,6 @@ class GrokAPIClient:
                         result = self.tradingClient.getAccountInfo()
                     else:
                         result = f"Unknown tool: {tool_name}"
-                    logger.info(str(result))
                     tool_result_msg = tool_result(str(result))
                     chat.append(tool_result_msg)
 
@@ -131,8 +129,5 @@ class GrokAPIClient:
             return None
 
     def getSignal(self, stockData, interval: int):
-        logger.info(str(stockData))
-
         response = self.send_request(str(stockData), interval)
-        logger.info(response)
         return response

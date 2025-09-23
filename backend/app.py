@@ -69,7 +69,7 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/data")
 async def get_data():
     if stock_client:
-        data = stock_client.getCurrentData()
+        data = await stock_client.getCurrentData()
         return JSONResponse(content={k: [to_dict(item) for item in v] for k, v in data.items()})
     return JSONResponse(content={"error": "No stock client available"})
 
